@@ -37,7 +37,7 @@ management:
     username: ${MONGODB_USERNAME:}
     password: ${MONGODB_PASSWORD:}
     basepackage: com.edu
-    connectTimeout: ${MONGODB_CONNECTTIMEOUT:3000}
+    connectTimeout: ${MONGODB_CONNECTTIMEOUT:1000}
     connectionsPerHost: ${MONGODB_CONNECTIONSPERHOST:100}
     socketTimeout: ${MONGODB_SOCKETTIMEOUT:3000}
     replicaSet: ${MONGODB_REPLICASET:search}
