@@ -12,6 +12,7 @@ import com.edu.salem.service.SearchService;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.logging.Level;
 
 @RestController
 public class SearchController {
@@ -25,8 +26,7 @@ public class SearchController {
     @GetMapping(value = "/query/{term}")
     public ResponseEntity<String> simpleQuery(
             @PathVariable("term") final String term) {
-        logger.info("Received query term", term);
-        System.out.println(this.searchService.simpleQuery(term));
+        logger.info("Received query term {}", term);
         return new ResponseEntity<>(HttpStatus.ACCEPTED);
     }
 
@@ -34,15 +34,13 @@ public class SearchController {
     public ResponseEntity<SearchResponseModel> complexQuery(
             @RequestBody final ComplexQueryRequestModel complexQueryRequestModel) {
         logger.info("Received query term", complexQueryRequestModel);
-        final Optional<SearchResponseModel> optionalSearchResponse;
+        Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
         try {
             optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            logger.error("Error occurred.");
         }
 
-        final SearchResponseModel searchResponseModel = optionalSearchResponse.orElse(null);
-
-        return new ResponseEntity<SearchResponseModel>(optionalSearchResponse.get(), HttpStatus.OK);
+        return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
     }
 }

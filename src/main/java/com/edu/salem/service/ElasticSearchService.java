@@ -17,6 +17,7 @@ import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -28,11 +29,16 @@ import java.util.Optional;
 @Service
 public class ElasticSearchService implements SearchService {
 
+    private final String index;
     private final ElasticsearchClient client;
     private static final Logger logger = LoggerFactory.getLogger(ElasticSearchService.class);
 
-    public ElasticSearchService() {
-        RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200))
+    public ElasticSearchService(@Value("${spring.elasticsearch.productIndex}") final String index,
+                                @Value("${spring.elasticsearch.host}") final String host,
+                                @Value("${spring.elasticsearch.port}") final Integer port) {
+
+        this.index = index;
+        RestClient restClient = RestClient.builder(new HttpHost(host, port))
                 .build();
 
         ElasticsearchTransport transport = new RestClientTransport(restClient,
@@ -51,7 +57,7 @@ public class ElasticSearchService implements SearchService {
         final SearchResponse<String> search;
         try {
             search = client.search(
-                    s -> s.index("products").query(q -> q.term(t -> t.field("name")
+                    s -> s.index(this.index).query(q -> q.term(t -> t.field("name")
                             .value(v -> v.stringValue(term)))),
                     String.class);
             return search.toString();
@@ -75,8 +81,7 @@ public class ElasticSearchService implements SearchService {
         return Optional.of(searchResponseModel);
     }
 
-    public Optional<SearchResponseModel> cachedComplexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
-
+    public Optional<SearchResponseModel> cachedComplexQuery() {
         return Optional.empty();
     }
 

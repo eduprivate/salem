@@ -1,0 +1,54 @@
+server.port: ${PORT:8081}
+
+logging:
+  level:
+    org.springframework: ${SPRING_LOGS:INFO}
+    com.edu: ${APP_LOGS:INFO}
+    root: ${ROOT_LOGS:ERROR}
+    jsonLogger: ${LOG_LEVEL:INFO}
+    org.redisson: ${REDIS_LOGS:-ERROR}
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      path-mapping:
+        health: healthcheck
+  endpoint:
+    health:
+      show-details: always
+  health:
+    elasticsearch:
+      enabled: false
+    mongo:
+      enabled: false
+    rabbit:
+      enabled: false
+
+  data:
+    elasticsearch:
+      host: ${ELASTICSEARCH_host:localhost}
+      port: ${ELASTICSEARCH_host:port}
+      productIndex: ${ELASTICSEARCH_PRODUCT_INDEX:relevance}
+  mongodb:
+    hosts: ${MONGODB_HOST:localhost}
+    databasename: ${MONGODB_DATABASENAME:search}
+    authSource: ${MONGODB_AUTHSOURCE:search}
+    username: ${MONGODB_USERNAME:}
+    password: ${MONGODB_PASSWORD:}
+    basepackage: com.edu
+    connectTimeout: ${MONGODB_CONNECTTIMEOUT:3000}
+    connectionsPerHost: ${MONGODB_CONNECTIONSPERHOST:100}
+    socketTimeout: ${MONGODB_SOCKETTIMEOUT:3000}
+    replicaSet: ${MONGODB_REPLICASET:search}
+    writeConcerns: ${MONGODB_WRITE_CONCERNS:2}
+  redis:
+    hostname: ${REDIS_HOSTNAME:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: ${REDIS_TIMEOUT:1000}
+    lockLeaseTime: ${REDIS_LOCK_LEASE_TIME:100}
+    lockWaitTime: ${REDIS_LOCK_WAIT_TIME:100}
+    maxIdle: ${REDIS_MAX_IDLE:20}
+    minIdle: ${REDIS_MIN_IDLE:5}
+    maxTotal: ${REDIS_MAX_TOTAL:30}
