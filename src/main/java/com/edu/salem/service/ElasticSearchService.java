@@ -12,6 +12,7 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.edu.salem.model.ComplexQueryRequestModel;
 import com.edu.salem.model.Product;
 import com.edu.salem.model.SearchResponseModel;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.slf4j.Logger;
@@ -61,8 +62,8 @@ public class ElasticSearchService implements SearchService {
     }
 
     @Override
+    @HystrixCommand(commandKey = "complexQuery",fallbackMethod = "cachedComplexQuery", ignoreExceptions = { IOException.class })
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
-
         final SearchResponse<String> search = client.search(
                 s -> s.index("relevance")
                         .query(q -> q.term(t -> t.field("title")
@@ -72,6 +73,11 @@ public class ElasticSearchService implements SearchService {
         final SearchResponseModel searchResponseModel = esToModelConversion(search);
 
         return Optional.of(searchResponseModel);
+    }
+
+    public Optional<SearchResponseModel> cachedComplexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+
+        return Optional.empty();
     }
 
     private SearchResponseModel esToModelConversion(SearchResponse<String> search) {

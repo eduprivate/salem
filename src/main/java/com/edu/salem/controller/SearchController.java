@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.edu.salem.service.SearchService;
 
+import java.io.IOException;
 import java.util.Optional;
 
 @RestController
@@ -33,7 +34,12 @@ public class SearchController {
     public ResponseEntity<SearchResponseModel> complexQuery(
             @RequestBody final ComplexQueryRequestModel complexQueryRequestModel) {
         logger.info("Received query term", complexQueryRequestModel);
-        final Optional<SearchResponseModel> optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
+        final Optional<SearchResponseModel> optionalSearchResponse;
+        try {
+            optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         final SearchResponseModel searchResponseModel = optionalSearchResponse.orElse(null);
 
