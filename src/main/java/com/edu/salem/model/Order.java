@@ -4,7 +4,7 @@ public enum Order {
     ASC("asc"),
     DESC("desc");
 
-    private String type;
+    private final String type;
 
     Order(String type) {
         this.type = type;

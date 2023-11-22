@@ -2,10 +2,13 @@ package com.edu.salem.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
+import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
+import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
-import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -21,16 +24,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ElasticSearchService implements SearchService {
 
     private final String index;
     private final ElasticsearchClient client;
+
+    private final List<String> defaultFields = Arrays.asList("title", "entity");
     private static final Logger logger = LoggerFactory.getLogger(ElasticSearchService.class);
 
     public ElasticSearchService(@Value("${spring.elasticsearch.productIndex}") final String index,
@@ -57,7 +62,7 @@ public class ElasticSearchService implements SearchService {
         final SearchResponse<String> search;
         try {
             search = client.search(
-                    s -> s.index(this.index).query(q -> q.term(t -> t.field("name")
+                    s -> s.index(this.index).query(q -> q.term(t -> t.field(defaultFields.get(0))
                             .value(v -> v.stringValue(term)))),
                     String.class);
             return search.toString();
@@ -68,14 +73,21 @@ public class ElasticSearchService implements SearchService {
     }
 
     @Override
-    @HystrixCommand(commandKey = "complexQuery",fallbackMethod = "cachedComplexQuery", ignoreExceptions = { IOException.class })
+    @HystrixCommand(commandKey = "complexQuery", fallbackMethod = "cachedComplexQuery", ignoreExceptions = {IOException.class})
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
-        final SearchResponse<String> search = client.search(
-                s -> s.index("relevance")
-                        .query(q -> q.term(t -> t.field("title")
-                                .value(v -> v.stringValue(complexQueryRequestModel.getQueryTerm())))),
-                String.class);
 
+        final MultiMatchQuery.Builder builder = QueryBuilders.multiMatch()
+                .query(complexQueryRequestModel.getQueryTerm())
+                .fields(defaultFields)
+                .operator(Operator.And)
+                .tieBreaker(0.7)
+                .type(TextQueryType.CrossFields);
+
+        final SearchResponse<Product> search = client.search(s -> s
+                        .index(this.index)
+                        .query(builder.build()._toQuery()),
+                Product.class
+        );
         final SearchResponseModel searchResponseModel = esToModelConversion(search);
 
         return Optional.of(searchResponseModel);
@@ -85,21 +97,19 @@ public class ElasticSearchService implements SearchService {
         return Optional.empty();
     }
 
-    private SearchResponseModel esToModelConversion(SearchResponse<String> search) {
-        final HitsMetadata<String> hits = search.hits();
-        final List<Hit<String>> hitList = hits.hits();
-        final List<Product> products = new ArrayList<>();
+    private SearchResponseModel esToModelConversion(SearchResponse<Product> search) {
+        final HitsMetadata<Product> hits = search.hits();
 
-        for (Hit<String> hit : hitList) {
-            final Map<String, JsonData> fields = hit.fields();
-            Product product = new Product(fields.get("id").toString(),
-                    fields.get("title").toString(),
-                    fields.get("category").toString(),
-                    fields.get("entity").toString());
-            products.add(product);
-        }
+        final List<Hit<Product>> hitList = hits.hits().stream()
+                .collect(Collectors.toList());
+
+        final List<Product> products = hitList.stream().map(
+                productHit -> new Product(productHit.fields().get("id").toString(),
+                        productHit.fields().get("title").toString(),
+                        productHit.fields().get("category").toString(),
+                        productHit.fields().get("entity").toString())
+        ).collect(Collectors.toList());
 
         return new SearchResponseModel(products);
     }
-
 }
