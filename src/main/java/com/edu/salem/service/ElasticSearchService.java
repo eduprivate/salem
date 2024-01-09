@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 public class ElasticSearchService implements SearchService {
 
     private final String index;
+
+    private final Double tieBreaker;
     private final ElasticsearchClient client;
 
     private final List<String> defaultFields = Arrays.asList("title", "entity");
@@ -40,9 +42,13 @@ public class ElasticSearchService implements SearchService {
 
     public ElasticSearchService(@Value("${spring.elasticsearch.productIndex}") final String index,
                                 @Value("${spring.elasticsearch.host}") final String host,
-                                @Value("${spring.elasticsearch.port}") final Integer port) {
+                                @Value("${spring.elasticsearch.port}") final Integer port,
+                                @Value("${spring.elasticsearch.tieBreaker}") final Double tieBreaker) {
 
         this.index = index;
+
+        this.tieBreaker = tieBreaker;
+
         RestClient restClient = RestClient.builder(new HttpHost(host, port))
                 .build();
 
@@ -80,7 +86,7 @@ public class ElasticSearchService implements SearchService {
                 .query(complexQueryRequestModel.getQueryTerm())
                 .fields(defaultFields)
                 .operator(Operator.And)
-                .tieBreaker(0.7)
+                .tieBreaker(tieBreaker)
                 .type(TextQueryType.CrossFields);
 
         final SearchResponse<Product> search = client.search(s -> s

@@ -27,9 +27,10 @@ management:
 
   data:
     elasticsearch:
-      host: ${ELASTICSEARCH_host:localhost}
-      port: ${ELASTICSEARCH_host:port}
+      host: ${ELASTICSEARCH_HOST:localhost}
+      port: ${ELASTICSEARCH_PORT:port}
       productIndex: ${ELASTICSEARCH_PRODUCT_INDEX:relevance}
+      tieBreaker: ${ELASTICSEARCH_TIEBREAKER:0.7}
   mongodb:
     hosts: ${MONGODB_HOST:localhost}
     databasename: ${MONGODB_DATABASENAME:search}
