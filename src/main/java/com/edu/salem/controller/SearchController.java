@@ -26,8 +26,16 @@ public class SearchController {
     @GetMapping(value = "/query/{term}")
     public ResponseEntity<String> simpleQuery(
             @PathVariable("term") final String term) {
-        logger.info("Received query term {}", term);
-        return new ResponseEntity<>(HttpStatus.ACCEPTED);
+        logger.info("Received query term", term);
+        String response = "";
+        try {
+            response = this.searchService.simpleQuery(term);
+            throw new IOException();
+        } catch (IOException e) {
+            logger.error("Error occurred.");
+        }
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @PostMapping(value = "/query")
@@ -37,6 +45,7 @@ public class SearchController {
         Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
         try {
             optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
+            throw new IOException();
         } catch (IOException e) {
             logger.error("Error occurred.");
         }

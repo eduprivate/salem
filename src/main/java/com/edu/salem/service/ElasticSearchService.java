@@ -15,12 +15,19 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.edu.salem.model.ComplexQueryRequestModel;
 import com.edu.salem.model.Product;
 import com.edu.salem.model.SearchResponseModel;
-import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,7 +36,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Service
+@Component
 public class ElasticSearchService implements SearchService {
 
     private final String index;
@@ -40,25 +47,46 @@ public class ElasticSearchService implements SearchService {
     private final List<String> defaultFields = Arrays.asList("title", "entity");
     private static final Logger logger = LoggerFactory.getLogger(ElasticSearchService.class);
 
-    public ElasticSearchService(@Value("${spring.elasticsearch.productIndex}") final String index,
-                                @Value("${spring.elasticsearch.host}") final String host,
-                                @Value("${spring.elasticsearch.port}") final Integer port,
-                                @Value("${spring.elasticsearch.tieBreaker}") final Double tieBreaker) {
+    public ElasticSearchService(@Value("${management.data.elasticsearch.productIndex}") final String index,
+                                @Value("${management.data.elasticsearch.host}") final String host,
+                                @Value("${management.data.elasticsearch.port}") final Integer port,
+                                @Value("${management.data.elasticsearch.user}") final String user,
+                                @Value("${management.data.elasticsearch.password}") final String password,
+                                @Value("${management.data.elasticsearch.tieBreaker}") final Double tieBreaker) {
 
         this.index = index;
 
         this.tieBreaker = tieBreaker;
 
-        RestClient restClient = RestClient.builder(new HttpHost(host, port))
-                .build();
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(user, password));
 
-        ElasticsearchTransport transport = new RestClientTransport(restClient,
-                new JacksonJsonpMapper());
+        RestClientBuilder builder = RestClient.builder(
+                        new HttpHost(host, port))
+                .setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                    @Override
+                    public HttpAsyncClientBuilder customizeHttpClient(
+                            HttpAsyncClientBuilder httpClientBuilder) {
+                        return httpClientBuilder
+                                .setDefaultCredentialsProvider(credentialsProvider);
+                    }
+                });
+
+        final RestClient restClient = builder.build();
+
+        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
 
         this.client = new ElasticsearchClient(transport);
 
     }
 
+
+    public String simpleQueryFallBack(final String term) {
+        return "Fallback:"+term;
+    }
+
+
+    @CircuitBreaker(name = "simpleQuery", fallbackMethod = "simpleQueryFallBack")
     public String simpleQuery(final String term) {
 
         if (this.client == null) {
@@ -71,6 +99,7 @@ public class ElasticSearchService implements SearchService {
                     s -> s.index(this.index).query(q -> q.term(t -> t.field(defaultFields.get(0))
                             .value(v -> v.stringValue(term)))),
                     String.class);
+            logger.info("Service: Received query term", term);
             return search.toString();
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
@@ -79,7 +108,6 @@ public class ElasticSearchService implements SearchService {
     }
 
     @Override
-    @HystrixCommand(commandKey = "complexQuery", fallbackMethod = "cachedComplexQuery", ignoreExceptions = {IOException.class})
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
 
         final MultiMatchQuery.Builder builder = QueryBuilders.multiMatch()
