@@ -31,6 +31,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -87,24 +88,32 @@ public class ElasticSearchService implements SearchService {
 
 
     @CircuitBreaker(name = "simpleQuery", fallbackMethod = "simpleQueryFallBack")
-    public String simpleQuery(final String term) {
-
+    public Optional<SearchResponseModel> simpleQuery(final String term) {
+        List<Product> results = new ArrayList<>();
         if (this.client == null) {
-            return term;
+            return Optional.empty();
         }
 
-        final SearchResponse<String> search;
+        final SearchResponse<Product> search;
         try {
             search = client.search(
-                    s -> s.index(this.index).query(q -> q.term(t -> t.field(defaultFields.get(0))
-                            .value(v -> v.stringValue(term)))),
-                    String.class);
+                    s -> s.index(this.index).query(q -> q
+                            .match(t -> t
+                                    .field("title")
+                                    .query(term)
+                            )
+                    ),
+                    Product.class);
             logger.info("Service: Received query term", term);
-            return search.toString();
+
+            final SearchResponseModel searchResponseModel = esToModelConversion(search);
+
+            return Optional.of(searchResponseModel);
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
         }
-        return null;
+        return Optional.empty();
+
     }
 
     @Override
@@ -137,12 +146,7 @@ public class ElasticSearchService implements SearchService {
         final List<Hit<Product>> hitList = hits.hits().stream()
                 .collect(Collectors.toList());
 
-        final List<Product> products = hitList.stream().map(
-                productHit -> new Product(productHit.fields().get("id").toString(),
-                        productHit.fields().get("title").toString(),
-                        productHit.fields().get("category").toString(),
-                        productHit.fields().get("entity").toString())
-        ).collect(Collectors.toList());
+        final List<Product> products = hitList.stream().map(hit -> hit.source()).toList();
 
         return new SearchResponseModel(products);
     }

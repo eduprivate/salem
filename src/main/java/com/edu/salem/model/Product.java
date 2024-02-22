@@ -4,11 +4,13 @@ import java.io.Serializable;
 
 public class Product implements Serializable {
 
-
     private String id;
     private String title;
     private String category;
     private String entity;
+
+    public Product() {
+    }
 
     public Product(String id, String title, String category, String entity) {
         this.id = id;

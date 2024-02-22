@@ -21,19 +21,15 @@ public class SearchController {
 		this.searchService = searchService;
 	}
     
-    @GetMapping(value = "/query/{term}")
-    public ResponseEntity<String> simpleQuery(
+    @GetMapping(value = "/query/{term}", produces = "application/json")
+    public ResponseEntity<SearchResponseModel> simpleQuery(
             @PathVariable("term") final String term) {
         logger.info("Received query term", term);
-        String response = "";
-        try {
-            response = this.searchService.simpleQuery(term);
-            throw new IOException();
-        } catch (IOException e) {
-            logger.error("Error occurred.");
-        }
+        Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
 
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        optionalSearchResponse = this.searchService.simpleQuery(term);
+
+        return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/query")
