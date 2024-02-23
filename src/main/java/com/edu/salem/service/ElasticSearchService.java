@@ -153,7 +153,7 @@ public class ElasticSearchService implements SearchService {
                 .collect(Collectors.toList());
 
         final List<Product> products = hitList.stream().map(hit -> hit.source()).toList();
-
-        return new SearchResponseModel(products);
+        Long totalHits = search.hits().total().value();
+        return new SearchResponseModel(totalHits, products);
     }
 }
