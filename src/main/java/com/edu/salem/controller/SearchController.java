@@ -39,7 +39,6 @@ public class SearchController {
         Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
         try {
             optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
-            throw new IOException();
         } catch (IOException e) {
             logger.error("Error occurred.");
         }

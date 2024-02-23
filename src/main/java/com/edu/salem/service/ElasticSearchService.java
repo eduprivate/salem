@@ -2,10 +2,8 @@ package com.edu.salem.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
-import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
-import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
@@ -28,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -83,7 +80,7 @@ public class ElasticSearchService implements SearchService {
 
 
     public String simpleQueryFallBack(final String term) {
-        return "Fallback:"+term;
+        return "Fallback:" + term;
     }
 
 
@@ -118,22 +115,31 @@ public class ElasticSearchService implements SearchService {
 
     @Override
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+        try {
+            Query query = MultiMatchQuery.of(m -> m
+                    .fields(defaultFields)
+                    .operator(Operator.And)
+                    .tieBreaker(tieBreaker)
+                    .type(TextQueryType.CrossFields)
+                    .query(complexQueryRequestModel.getQueryTerm())
+            )._toQuery();
 
-        final MultiMatchQuery.Builder builder = QueryBuilders.multiMatch()
-                .query(complexQueryRequestModel.getQueryTerm())
-                .fields(defaultFields)
-                .operator(Operator.And)
-                .tieBreaker(tieBreaker)
-                .type(TextQueryType.CrossFields);
+            final SearchResponse<Product> search = client.search(s -> s
+                            .index(this.index)
+                            .query(query),
+                    Product.class
+            );
 
-        final SearchResponse<Product> search = client.search(s -> s
-                        .index(this.index)
-                        .query(builder.build()._toQuery()),
-                Product.class
-        );
-        final SearchResponseModel searchResponseModel = esToModelConversion(search);
+            final SearchResponseModel searchResponseModel = esToModelConversion(search);
 
-        return Optional.of(searchResponseModel);
+            return Optional.of(searchResponseModel);
+
+
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Error Occurred, ", e);
+        }
+        return Optional.empty();
+
     }
 
     public Optional<SearchResponseModel> cachedComplexQuery() {
