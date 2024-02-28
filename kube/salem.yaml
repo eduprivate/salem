@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salem
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: salem
+  template:
+    metadata:
+      labels:
+        app: salem
+    spec:
+      containers:
+        - name: salem
+          image: cadu/salem:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+          imagePullPolicy: Always
