@@ -26,10 +26,12 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Component
@@ -63,8 +65,7 @@ public class ElasticSearchService implements SearchService {
                     @Override
                     public HttpAsyncClientBuilder customizeHttpClient(
                             HttpAsyncClientBuilder httpClientBuilder) {
-                        return httpClientBuilder
-                                .setDefaultCredentialsProvider(credentialsProvider);
+                        return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                     }
                 });
 
@@ -73,14 +74,7 @@ public class ElasticSearchService implements SearchService {
         ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
 
         this.client = new ElasticsearchClient(transport);
-
     }
-
-
-    public String simpleQueryFallBack(final String term) {
-        return "Fallback:" + term;
-    }
-
 
     @CircuitBreaker(name = "simpleQuery", fallbackMethod = "simpleQueryFallBack")
     public Optional<SearchResponseModel> simpleQuery(final String term) {
@@ -108,25 +102,38 @@ public class ElasticSearchService implements SearchService {
             logger.error("Error Occurred, ", e);
         }
         return Optional.empty();
-
     }
 
+    public Optional<SearchResponseModel> simpleQueryFallBack(final String term) {
+        return Optional.empty();
+    }
+
+    @CircuitBreaker(name = "complexQuery", fallbackMethod = "complexQueryFallBack")
     @Override
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
         try {
-            final SearchResponse<Product> queryResult = getQueryResult(complexQueryRequestModel);
-            final SearchResponse<String> queryAggregationResult = getQueryAggregationResult(complexQueryRequestModel);
+            final CompletableFuture<SearchResponse<Product>> queryResultFuture = getQueryResult(complexQueryRequestModel);
+            final CompletableFuture<SearchResponse<String>> queryAggregationResultFuture = getQueryAggregationResult(complexQueryRequestModel);
+
+            final SearchResponse<Product> queryResult = queryResultFuture.get();
+            final SearchResponse<String> queryAggregationResult = queryAggregationResultFuture.get();
+
             final SearchResponseModel searchResponseModel = esToModelConversion(queryResult, queryAggregationResult);
 
             return Optional.of(searchResponseModel);
-        } catch (ElasticsearchException | IOException e) {
+        } catch (Throwable e) {
             logger.error("Error Occurred, ", e);
         }
         return Optional.empty();
 
     }
 
-    private SearchResponse<Product> getQueryResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+    public Optional<SearchResponseModel> complexQueryFallBack(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+        return Optional.empty();
+    }
+
+        @Async
+    private CompletableFuture<SearchResponse<Product>> getQueryResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
         try {
             Query query = MultiMatchQuery.of(m -> m
                     .fields(defaultFields)
@@ -136,11 +143,11 @@ public class ElasticSearchService implements SearchService {
                     .query(complexQueryRequestModel.getQueryTerm())
             )._toQuery();
 
-            return client.search(s -> s
+            return CompletableFuture.completedFuture(client.search(s -> s
                             .index(this.index)
                             .query(query),
                     Product.class
-            );
+            ));
 
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
@@ -149,7 +156,8 @@ public class ElasticSearchService implements SearchService {
 
     }
 
-    private SearchResponse<String> getQueryAggregationResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+    @Async
+    private CompletableFuture<SearchResponse<String>> getQueryAggregationResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
         try {
             Query query = MultiMatchQuery.of(m -> m
                     .fields(defaultFields)
@@ -166,13 +174,13 @@ public class ElasticSearchService implements SearchService {
 
             filters.put("category", aggregationCategory);
 
-            return client.search(s -> s
+            return CompletableFuture.completedFuture(client.search(s -> s
                             .index(this.index)
                             .query(query)
                             .size(0)
                             .aggregations(filters),
                     String.class
-            );
+            ));
 
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
