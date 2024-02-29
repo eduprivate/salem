@@ -8,18 +8,24 @@ public class SearchResponseModel implements Serializable {
 
     private Long hits;
     private List<Product> products;
-    private Map<Filter, String> filters;
+    Map<String, Map<String, Long>> filters;
 
     public SearchResponseModel(Long hits, List<Product> products) {
         this.hits = hits;
         this.products = products;
     }
 
+    public SearchResponseModel(Long hits, List<Product> products, Map<String, Map<String, Long>> filters) {
+        this.hits = hits;
+        this.products = products;
+        this.filters = filters;
+    }
+
     public SearchResponseModel(List<Product> products) {
         this.products = products;
     }
 
-    public SearchResponseModel(Map<Filter, String> filters) {
+    public SearchResponseModel(Map<String, Map<String, Long>> filters) {
         this.filters = filters;
     }
 
@@ -31,11 +37,11 @@ public class SearchResponseModel implements Serializable {
         this.products = products;
     }
 
-    public Map<Filter, String> getFilters() {
+    public Map<String, Map<String, Long>> getFilters() {
         return filters;
     }
 
-    public void setFilters(Map<Filter, String> filters) {
+    public void setFilters(Map<String, Map<String, Long>> filters) {
         this.filters = filters;
     }
 

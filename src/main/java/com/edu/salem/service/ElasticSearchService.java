@@ -2,6 +2,7 @@ package com.edu.salem.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.aggregations.*;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -28,10 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -103,7 +101,7 @@ public class ElasticSearchService implements SearchService {
                     Product.class);
             logger.info("Service: Received query term", term);
 
-            final SearchResponseModel searchResponseModel = esToModelConversion(search);
+            final SearchResponseModel searchResponseModel = esToModelConversion(search, null);
 
             return Optional.of(searchResponseModel);
         } catch (ElasticsearchException | IOException e) {
@@ -116,6 +114,20 @@ public class ElasticSearchService implements SearchService {
     @Override
     public Optional<SearchResponseModel> complexQuery(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
         try {
+            final SearchResponse<Product> queryResult = getQueryResult(complexQueryRequestModel);
+            final SearchResponse<String> queryAggregationResult = getQueryAggregationResult(complexQueryRequestModel);
+            final SearchResponseModel searchResponseModel = esToModelConversion(queryResult, queryAggregationResult);
+
+            return Optional.of(searchResponseModel);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Error Occurred, ", e);
+        }
+        return Optional.empty();
+
+    }
+
+    private SearchResponse<Product> getQueryResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+        try {
             Query query = MultiMatchQuery.of(m -> m
                     .fields(defaultFields)
                     .operator(Operator.And)
@@ -124,21 +136,48 @@ public class ElasticSearchService implements SearchService {
                     .query(complexQueryRequestModel.getQueryTerm())
             )._toQuery();
 
-            final SearchResponse<Product> search = client.search(s -> s
+            return client.search(s -> s
                             .index(this.index)
                             .query(query),
                     Product.class
             );
 
-            final SearchResponseModel searchResponseModel = esToModelConversion(search);
+        } catch (ElasticsearchException | IOException e) {
+            logger.error("Error Occurred, ", e);
+        }
+        return null;
 
-            return Optional.of(searchResponseModel);
+    }
 
+    private SearchResponse<String> getQueryAggregationResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
+        try {
+            Query query = MultiMatchQuery.of(m -> m
+                    .fields(defaultFields)
+                    .operator(Operator.And)
+                    .tieBreaker(tieBreaker)
+                    .type(TextQueryType.CrossFields)
+                    .query(complexQueryRequestModel.getQueryTerm())
+            )._toQuery();
+
+            Map<String, Aggregation> filters = new HashMap<>();
+            Aggregation aggregationCategory = new Aggregation.Builder()
+                    .terms(new TermsAggregation.Builder().field("category").build())
+                    .build();
+
+            filters.put("category", aggregationCategory);
+
+            return client.search(s -> s
+                            .index(this.index)
+                            .query(query)
+                            .size(0)
+                            .aggregations(filters),
+                    String.class
+            );
 
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
         }
-        return Optional.empty();
+        return null;
 
     }
 
@@ -146,14 +185,38 @@ public class ElasticSearchService implements SearchService {
         return Optional.empty();
     }
 
-    private SearchResponseModel esToModelConversion(SearchResponse<Product> search) {
-        final HitsMetadata<Product> hits = search.hits();
+    private SearchResponseModel esToModelConversion(SearchResponse<Product> searchResults,
+                                                    final SearchResponse<String> searchResultsAggregations) {
+        final HitsMetadata<Product> hits = searchResults.hits();
 
         final List<Hit<Product>> hitList = hits.hits().stream()
                 .collect(Collectors.toList());
 
         final List<Product> products = hitList.stream().map(hit -> hit.source()).toList();
-        Long totalHits = search.hits().total().value();
-        return new SearchResponseModel(totalHits, products);
+        Long totalHits = searchResults.hits().total().value();
+
+        Map<String, Map<String, Long>> filters = null;
+        if (searchResultsAggregations != null) {
+
+            filters = new HashMap<>();
+
+
+            List<String> filterNames = new ArrayList<>(Arrays.asList("category"));
+
+            for (String filterName : filterNames) {
+                Map<String, Long> filtersValues = new HashMap<>();
+                final List<StringTermsBucket> buckets = searchResultsAggregations.aggregations()
+                        .get(filterName)
+                        .sterms().buckets().array();
+
+                for (StringTermsBucket bucket : buckets) {
+                    filtersValues.put(bucket.key().stringValue(), bucket.docCount());
+                }
+                filters.put(filterName, filtersValues);
+            }
+
+        }
+
+        return new SearchResponseModel(totalHits, products, filters);
     }
 }
