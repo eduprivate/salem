@@ -4,7 +4,6 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.aggregations.*;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
@@ -78,11 +77,6 @@ public class ElasticSearchService implements SearchService {
 
     @CircuitBreaker(name = "simpleQuery", fallbackMethod = "simpleQueryFallBack")
     public Optional<SearchResponseModel> simpleQuery(final String term) {
-        List<Product> results = new ArrayList<>();
-        if (this.client == null) {
-            return Optional.empty();
-        }
-
         final SearchResponse<Product> search;
         try {
             search = client.search(
@@ -95,9 +89,7 @@ public class ElasticSearchService implements SearchService {
                     Product.class);
             logger.info("Service: Received query term", term);
 
-            final SearchResponseModel searchResponseModel = esToModelConversion(search, null);
-
-            return Optional.of(searchResponseModel);
+            return Optional.of(esToModelConversion(search, null));
         } catch (ElasticsearchException | IOException e) {
             logger.error("Error Occurred, ", e);
         }
@@ -153,7 +145,6 @@ public class ElasticSearchService implements SearchService {
             logger.error("Error Occurred, ", e);
         }
         return null;
-
     }
 
     @Async
@@ -208,7 +199,6 @@ public class ElasticSearchService implements SearchService {
 
             filters = new HashMap<>();
 
-
             List<String> filterNames = new ArrayList<>(Arrays.asList("category"));
 
             for (String filterName : filterNames) {
@@ -222,7 +212,6 @@ public class ElasticSearchService implements SearchService {
                 }
                 filters.put(filterName, filtersValues);
             }
-
         }
 
         return new SearchResponseModel(totalHits, products, filters);

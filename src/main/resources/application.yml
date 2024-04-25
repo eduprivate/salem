@@ -46,7 +46,7 @@ management:
     replicaSet: ${MONGODB_REPLICASET:search}
     writeConcerns: ${MONGODB_WRITE_CONCERNS:2}
   redis:
-    hostname: ${REDIS_HOSTNAME:localhost}
+    hostname: ${REDIS_HOSTNAME:0.0.0.0}
     port: ${REDIS_PORT:6379}
     password: ${REDIS_PASSWORD:}
     timeout: ${REDIS_TIMEOUT:1000}
@@ -55,3 +55,4 @@ management:
     maxIdle: ${REDIS_MAX_IDLE:20}
     minIdle: ${REDIS_MIN_IDLE:5}
     maxTotal: ${REDIS_MAX_TOTAL:30}
+    cache-names: complexQuery

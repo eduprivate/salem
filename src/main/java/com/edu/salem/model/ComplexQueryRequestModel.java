@@ -2,6 +2,7 @@ package com.edu.salem.model;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 
 public class ComplexQueryRequestModel implements Serializable {
     private String queryTerm;
@@ -36,5 +37,10 @@ public class ComplexQueryRequestModel implements Serializable {
 
     public void setOrder(Order order) {
         this.order = order;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(queryTerm, filters, order);
     }
 }
