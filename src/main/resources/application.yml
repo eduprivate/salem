@@ -33,6 +33,13 @@ management:
       password: ${ELASTICSEARCH_PASSWORD:}
       productIndex: ${ELASTICSEARCH_PRODUCT_INDEX:}
       tieBreaker: ${ELASTICSEARCH_TIEBREAKER:0.7}
+    openSearch:
+      host: ${OPEN_SEARCH_HOST:}
+      port: ${OPEN_SEARCH_PORT:}
+      user: ${OPEN_SEARCH_USER:}
+      password: ${OPEN_SEARCH_PASSWORD:}
+      productIndex: ${OPEN_SEARCH_PRODUCT_INDEX:}
+      tieBreaker: ${OPEN_SEARCH_TIEBREAKER:0.7}
   mongodb:
     hosts: ${MONGODB_HOST:localhost}
     databasename: ${MONGODB_DATABASENAME:search}
