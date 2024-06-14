@@ -26,13 +26,6 @@ management:
       enabled: false
 
   data:
-    elasticsearch:
-      host: ${ELASTICSEARCH_HOST:}
-      port: ${ELASTICSEARCH_PORT:}
-      user: ${ELASTICSEARCH_USER:}
-      password: ${ELASTICSEARCH_PASSWORD:}
-      productIndex: ${ELASTICSEARCH_PRODUCT_INDEX:}
-      tieBreaker: ${ELASTICSEARCH_TIEBREAKER:0.7}
     openSearch:
       host: ${OPEN_SEARCH_HOST:}
       port: ${OPEN_SEARCH_PORT:}

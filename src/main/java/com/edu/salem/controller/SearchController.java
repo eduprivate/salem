@@ -7,13 +7,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Optional;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 @RestController
 public class SearchController {
@@ -24,29 +24,32 @@ public class SearchController {
 		this.searchService = searchService;
 	}
     
-    @GetMapping(value = "/query/{term}", produces = "application/json")
+    @GetMapping(value = "/query/{term}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Nullable
     public ResponseEntity<SearchResponseModel> simpleQuery(
             @PathVariable("term") final String term) {
-        logger.info("Received query term", term);
-        Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
-
-        optionalSearchResponse = this.searchService.simpleQuery(term);
-
-        return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
+        Optional<SearchResponseModel> optionalSearchResponse = this.searchService.simpleQuery(term);
+        if (optionalSearchResponse.isPresent()) {
+            return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
     }
 
     @PostMapping(value = "/query")
     @Cacheable(value = "complexQuery")
+    @Nullable
     public ResponseEntity<SearchResponseModel> complexQuery(
             @RequestBody final ComplexQueryRequestModel complexQueryRequestModel) {
-        logger.info("Received query term", complexQueryRequestModel);
         Optional<SearchResponseModel> optionalSearchResponse = Optional.empty();
         try {
             optionalSearchResponse = this.searchService.complexQuery(complexQueryRequestModel);
+            if (optionalSearchResponse.isPresent()) {
+                return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
+            }
         } catch (IOException e) {
             logger.error("Error occurred.");
         }
 
-        return new ResponseEntity<>(optionalSearchResponse.get(), HttpStatus.OK);
+        return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
     }
 }
