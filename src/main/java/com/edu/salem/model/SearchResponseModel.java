@@ -51,9 +51,9 @@ public class SearchResponseModel implements Serializable {
     }
 
     public static class Builder {
-        private Long hits;
-        private List<Product> products;
-        private Map<String, Map<String, Long>> filters;
+        private final Long hits;
+        private final List<Product> products;
+        private final Map<String, Map<String, Long>> filters;
         private PaginationModel pagination;
 
         public Builder(Long hits, List<Product> products, Map<String, Map<String, Long>> filters) {

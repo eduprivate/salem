@@ -9,7 +9,5 @@ import java.util.Optional;
 
 @Service
 public interface SearchService {
-	Optional<SearchResponseModel> simpleQuery(final String term);
-
-	Optional<SearchResponseModel> complexQuery(final ComplexQueryRequestModel complexQueryRequestModel) throws IOException;
+    Optional<SearchResponseModel> complexQuery(final ComplexQueryRequestModel complexQueryRequestModel) throws IOException;
 }

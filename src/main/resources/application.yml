@@ -24,7 +24,8 @@ management:
       enabled: false
     rabbit:
       enabled: false
-
+  service:
+    searchableFields: ${SEARCHABLE_FIELDS:"title, entity"}
   data:
     openSearch:
       host: ${OPEN_SEARCH_HOST:}

@@ -1,9 +1,12 @@
 package com.edu.salem.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ComplexQueryRequestModel implements Serializable {
     private static final Integer DEFAULT_SIZE = 60;
     private static final Integer DEFAULT_FROM = 0;
