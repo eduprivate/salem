@@ -87,16 +87,6 @@ public class QueryBuilder {
         return filters;
     }
 
-    public Query buildAggregationQuery(ComplexQueryRequestModel complexQueryRequestModel) {
-        return MultiMatchQuery.of(m -> m
-                .fields(DEFAULT_AGGREGATION_FIELDS)
-                .operator(Operator.And)
-                .tieBreaker(tieBreaker)
-                .type(TextQueryType.CrossFields)
-                .query(complexQueryRequestModel.getQueryTerm())
-        ).toQuery();
-    }
-
     public SearchResponseModel toModelConversion(final Optional<SearchResponse<Product>> optionalSearchResponse,
                                                  final SearchResponse<String> searchResultsAggregations,
                                                  final ComplexQueryRequestModel complexQueryRequestModel) {

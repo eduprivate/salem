@@ -113,7 +113,7 @@ public class OpenSearchService implements SearchService {
     @Async
     private CompletableFuture<SearchResponse<String>> getQueryAggregationResult(ComplexQueryRequestModel complexQueryRequestModel) throws IOException {
         try {
-            final Query query = this.queryBuilder.buildAggregationQuery(complexQueryRequestModel);
+            Query query = this.queryBuilder.buildQuery(complexQueryRequestModel);
             final Map<String, Aggregation> filters = this.queryBuilder.buildAggregationFilters();
 
             return CompletableFuture.completedFuture(client.search(s -> s
